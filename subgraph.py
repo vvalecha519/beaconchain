@@ -10,7 +10,6 @@ class Subgraph():
 
     def __init__(self, network: str):
         self.network = network
-        print(constants)
         self.config_map = {
             "mainnet": {
                 "graph_url": "https://gateway-arbitrum.network.thegraph.com/api/73b09012e7e6301b5e0e20b45fd66b48/deployments/id/" + constants["SUBGRAPH_API_KEY"],
@@ -64,7 +63,6 @@ class Subgraph():
                     break
                 
                 value = batch[-1]["id"]
-                print(value)
                 time.sleep(0.1)
             print("length of large data is: ", len(res))
             return res
@@ -74,6 +72,8 @@ class Subgraph():
     async def fetch_validators(self):
         query = self.queries["validators"]
         validators = await self.fetch_large_data_from_graph(query, "validators")
-        print(len(validators))
+        print("Total validators in graph is:" , len(validators))
+        return validators
+
     
     

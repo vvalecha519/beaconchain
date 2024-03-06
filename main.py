@@ -12,6 +12,3 @@ def main():
 @app.on_event("startup")
 async def startup_event():
     print("Starting up")
-    graph = Subgraph("mainnet")
-    validators = await graph.fetch_validators()
-
