@@ -1,34 +1,43 @@
 from fastapi import APIRouter
 from beacon_chain_provider import BeaconChainProvider
 from constant import constants
+from pydantic import BaseModel
 
 
 api_router = APIRouter()
 
-@api_router.get("/")
-async def root():
-    return {"message": "Hello World"}
+# @api_router.get("/")
+# async def root():
+#     return {"message": "Hello World"}
 
-@api_router.get("/epoch/latest")
-async def getLatestEpoch():
-    return 1
+# @api_router.get("/epoch/latest")
+# async def getLatestEpoch():
+#     return 1
 
-@api_router.get("/slot")
-async def getSlot(slot: int):
-    return 1
+# @api_router.get("/slot")
+# async def getSlot(slot: int):
+#     return 1
+
+class ValidatorsPostRequest(BaseModel):
+    indicesOrPubkey: str
 
 @api_router.post("/validator")
-async def getValidator():
+async def validators(request: ValidatorsPostRequest):
+    indices_or_pubkey = request.indicesOrPubkey
+    validators = indices_or_pubkey.split(",")
+    print(validators)
+    beaconapi = BeaconChainProvider(constants["BEACON_API_KEY"])
+    return await beaconapi.fetch_validator_info(validators)
     return {}
 
-@api_router.get("/validator/{validator_id}/balancehistory")
-async def getValidatorBalanceHistory(validator_id: int, epoch: int, offset: int, limit: int):
-    return 1
+# @api_router.get("/validator/{validator_id}/balancehistory")
+# async def getValidatorBalanceHistory(validator_id: int, epoch: int, offset: int, limit: int):
+#     return 1
 
-@api_router.get("/queue")
-async def getValidatorBalanceHistory(validator_id: int, epoch: int, offset: int, limit: int):
-    beaconapi = BeaconChainProvider(constants["BEACON_API_KEY"])
-    return await beaconapi.fetch_validator_info()
+# @api_router.get("/queue")
+# async def getValidatorBalanceHistory(validator_id: int, epoch: int, offset: int, limit: int):
+#     beaconapi = BeaconChainProvider(constants["BEACON_API_KEY"])
+#     return await beaconapi.fetch_validator_info()
 
 
 #beaconchain api used by oracle:
