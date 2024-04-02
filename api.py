@@ -21,14 +21,35 @@ api_router = APIRouter()
 class ValidatorsPostRequest(BaseModel):
     indicesOrPubkey: str
 
-@api_router.post("/validator")
+@api_router.post("/v1/validator")
 async def validators(request: ValidatorsPostRequest):
     indices_or_pubkey = request.indicesOrPubkey
     validators = indices_or_pubkey.split(",")
     print(validators)
     beaconapi = BeaconChainProvider(constants["BEACON_API_KEY"])
     return await beaconapi.fetch_validator_info(validators)
-    return {}
+
+@api_router.get("/v1/validator/{ids}/balancehistory")
+async def getValidator(ids: str, latest_epoch: int, limit: int):
+    validators = ids.split(",")
+    beaconapi = BeaconChainProvider(constants["BEACON_API_KEY"])
+    return await beaconapi.balance_history(validators, latest_epoch, limit)
+
+#input: api/v1/validator/0x8ebf686257035fdb779b585fbfb083818ae69a7b86ef47aa1909dc1361c2eaeb5ff047adc5587ceaec7a7e21cf397dc2/balancehistory?latest_epoch=273928&limit=2
+# [ output
+#   {
+#     "index": "1143880",
+#     "effective_balance": "32000000000",
+#     "balance": "32007115148",
+#     "epoch": 273928
+#   },
+#   {
+#     "index": "1143880",
+#     "effective_balance": "32000000000",
+#     "balance": "32007105539",
+#     "epoch": 273927
+#   }
+# ]
 
 # @api_router.get("/validator/{validator_id}/balancehistory")
 # async def getValidatorBalanceHistory(validator_id: int, epoch: int, offset: int, limit: int):

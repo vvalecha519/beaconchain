@@ -8,7 +8,8 @@ import math
 class BeaconChainProvider():
     def __init__(self, api_key):
         self.api_key = api_key
-        self.url = "https://beacon.6r4i7nz1iqzyzulw1qntu3yt8.blockchainnodeengine.com/"
+        self.url = f"https://rpc.ankr.com/premium-http/eth_beacon/{api_key}/"
+        print(self.url)
         self.cache = {
             "balancehistory": {}
         }
@@ -30,12 +31,11 @@ class BeaconChainProvider():
 
     async def post(self, query: str, body):
         json_data = None
-        context = ssl._create_unverified_context()
         while True:
             try:
                 async with aiohttp.ClientSession() as session:
-                    serialized_body = json.dumps(body)
-                    async with session.post(query, json=body) as response:
+                    print(query, body)
+                    async with session.post(query, json={"ids": ["0xae2a349dc26aa3ced31730eb5f1cb68562071122b02ea8dc5e8136484ab4aa64ce176285cd5bc210190ce663635421b6"]}) as response:
                         json_data = await response.json()
                         #error handling check status
                         return json_data
@@ -46,16 +46,43 @@ class BeaconChainProvider():
     async def fetch_slot_info(self, slot: str):
         return 0
 
-    async def balance_history(self, index, epoch: int):
-        return 0
+    def epoch_to_slot(self, epoch: int):
+        return epoch*32
     
-    async def fetch_batch_validator_info(self, validators: list):
-        suffix_url = "eth/v1/beacon/states/head/validators?key=" + self.api_key
-        res = await self.post(self.url + suffix_url, {'ids': validators})
+    def extract_validators_balance_info(self, validators_info, epoch):
+        validators_balance_info = []
+        for validator in validators_info:
+            print(validator)
+            balance_info = {
+                "index": validator["index"],
+                "effective_balance": validator["effective_balance"],
+                "balance": validator["balance"],
+                "epoch": epoch
+            }
+            validators_balance_info.append(balance_info)
+        return validators_balance_info
+
+    async def balance_history(self, validators: list, epoch: int, limit: int = 100):
+        validators_balance_history = []
+        tasks = [self.fetch_validator_info(validators, self.epoch_to_slot(current_epoch)) for current_epoch in range(epoch, epoch-limit, -1)]
+        validators_info_per_epoch = await asyncio.gather(*tasks)
+        for i, validators_info in enumerate(validators_info_per_epoch):
+            current_epoch = epoch - i
+            validators_balance_history.extend(self.extract_validators_balance_info(validators_info['data'], current_epoch))
+        return validators_balance_history
+
+    async def fetch_batch_validator_info(self, validators: list[str], state="head"):
+        url = f"{self.url}eth/v1/beacon/states/{state}/validators"
+        print(url)
+        try:
+            res = await self.post(url, {"ids": validators})
+        except Exception as e:
+            print(f"Error fetching batch validator info: {e}")
+            return {'status': f"Error fetching batch validator info: {e}", 'data': None}
         print("fetching batch validator info")
         return res
 
-    async def fetch_validator_info(self, validators: list[str]): #validators can be either indices or pubkeys
+    async def fetch_validator_info(self, validators: list[str], state="head"): #validators can be either indices or pubkeys
         print("fetching validator info")
         try:
             validators_info = []
@@ -63,7 +90,7 @@ class BeaconChainProvider():
             batched_validator_info = []
             for start in range(0, total_validators, 64*64):
                 end = min(start+64*64, total_validators)
-                tasks = [self.fetch_batch_validator_info(validators[j: min(j+64, total_validators)]) for j in range(start, end, 64)]
+                tasks = [self.fetch_batch_validator_info(validators[j: min(j+64, total_validators)], state) for j in range(start, end, 64)]
                 batched_validator_info.extend(await asyncio.gather(*tasks))
             for batch in batched_validator_info:
                 validators_info.extend(batch["data"])
